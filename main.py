@@ -10,6 +10,7 @@ from typing import Optional, List
 from datetime import datetime, date
 import psycopg2
 import psycopg2.extras
+import urllib.parse as up
 import os
 
 app = FastAPI(
@@ -27,17 +28,17 @@ app.add_middleware(
 
 # ── DATABASE ─────────────────────────────────────────────────
 def get_db():
-   import urllib.parse as up
-url = up.urlparse(os.environ["DATABASE_URL"])
-conn = psycopg2.connect(
-    host=url.hostname,
-    port=url.port,
-    dbname=url.path[1:],
-    user=url.username,
-    password=up.unquote(url.password),
-    sslmode="require",
-    cursor_factory=psycopg2.extras.RealDictCursor
-)
+    url = up.urlparse(os.environ["DATABASE_URL"])
+    conn = psycopg2.connect(
+        host=url.hostname,
+        port=url.port or 5432,
+        dbname=url.path[1:],
+        user=url.username,
+        password=up.unquote(url.password or ""),
+        sslmode="require",
+        cursor_factory=psycopg2.extras.RealDictCursor
+    )
+    return conn
 
 # ── MODELS ───────────────────────────────────────────────────
 class WorkOrderCreate(BaseModel):
@@ -215,14 +216,12 @@ def create_work_order(body: WorkOrderCreate):
     conn = get_db()
     cur  = conn.cursor()
 
-    # Cek equipment ada
     cur.execute("SELECT eq_id, area FROM equipment WHERE eq_id = %s", (body.eq_id,))
     eq = cur.fetchone()
     if not eq:
         conn.close()
         raise HTTPException(404, f"Equipment id {body.eq_id} tidak ditemukan")
 
-    # Generate WO number
     cur.execute("SELECT generate_wo_number(%s, %s)", (eq["area"], body.wo_type))
     wo_number = cur.fetchone()["generate_wo_number"]
 
@@ -246,14 +245,12 @@ def update_work_order(wo_number: str, body: WorkOrderUpdate):
     conn = get_db()
     cur  = conn.cursor()
 
-    # Cek WO ada
     cur.execute("SELECT wo_id, status FROM work_order WHERE wo_number = %s", (wo_number,))
     wo = cur.fetchone()
     if not wo:
         conn.close()
         raise HTTPException(404, f"WO {wo_number} tidak ditemukan")
 
-    # Build update
     sets   = []
     params = []
 
