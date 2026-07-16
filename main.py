@@ -27,12 +27,17 @@ app.add_middleware(
 
 # ── DATABASE ─────────────────────────────────────────────────
 def get_db():
-    conn = psycopg2.connect(
-        os.environ["DATABASE_URL"],
-        sslmode="require",
-        cursor_factory=psycopg2.extras.RealDictCursor
-    )
-    return conn
+   import urllib.parse as up
+url = up.urlparse(os.environ["DATABASE_URL"])
+conn = psycopg2.connect(
+    host=url.hostname,
+    port=url.port,
+    dbname=url.path[1:],
+    user=url.username,
+    password=up.unquote(url.password),
+    sslmode="require",
+    cursor_factory=psycopg2.extras.RealDictCursor
+)
 
 # ── MODELS ───────────────────────────────────────────────────
 class WorkOrderCreate(BaseModel):
