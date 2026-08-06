@@ -1626,25 +1626,32 @@ async function loadBkBldg(){
 function bkRender(bldgs){
   var area=E("bk-area").value;
   var timColors={"A":"#3b82f6","B":"#f97316","C":"#22c55e","D":"#a855f7"};
-  E("bk-blist").innerHTML=bldgs.map(function(b){
-    var sel=S.bkBldgs.indexOf(b.name)!==-1;
+  S._bkRendered=bldgs; // simpan referensi
+  E("bk-blist").innerHTML=bldgs.map(function(b,i){
     var tim=area==="Smelter"?getBldgTim(b.name):null;
     var timBadge=tim?'<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:'+timColors[tim]+'22;color:'+timColors[tim]+';border:1px solid '+timColors[tim]+'44;margin-left:4px">'+tim+'</span>':"";
-    return'<label class="cb-item'+(sel?" sel":"")+'" data-bname="'+esc(b.name)+'">'+
-      '<input type="checkbox" onchange="bkTog(\''+esc(b.name)+'\',this.checked)">'+
+    return'<label class="cb-item" data-idx="'+i+'">'+
+      '<input type="checkbox" onchange="bkTogIdx('+i+',this.checked)">'+
       '<span class="cb-lbl">'+esc(b.name)+timBadge+'</span>'+
       '<span class="cb-cnt">'+b.count+' eq</span>'+
     '</label>';
   }).join("");
-  // Set checkbox state via DOM
+  // Set checkbox state
   E("bk-blist").querySelectorAll(".cb-item").forEach(function(label){
-    var name=label.getAttribute("data-bname");
+    var idx=parseInt(label.getAttribute("data-idx"));
+    var b=bldgs[idx];
+    if(!b)return;
+    var sel=S.bkBldgs.indexOf(b.name)!==-1;
     var cb=label.querySelector("input");
-    var sel=S.bkBldgs.indexOf(name)!==-1;
     cb.checked=sel;
     label.classList.toggle("sel",sel);
   });
   bkInfo();
+}
+function bkTogIdx(idx,checked){
+  var b=S._bkRendered&&S._bkRendered[idx];
+  if(!b)return;
+  bkTog(b.name,checked);
 }
 function bkFilterBldg(){
   var q=E("bk-bq").value.toLowerCase();
